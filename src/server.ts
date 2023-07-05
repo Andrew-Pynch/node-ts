@@ -27,7 +27,7 @@ app.post('/sms', (req: Request, res: Response) => {
   const twiml = new MessagingResponse();
 
   // Confirm the message is from the right number
-  if (req.body.From !== '503-930-2186') {
+  if (req.body.From !== '+15039302186') {
     twiml.message('Unauthorized user.');
     res.writeHead(200, { 'Content-Type': 'text/xml' });
     res.end(twiml.toString());
