@@ -6,3 +6,9 @@
 
 # Environment variables
 /env.ts
+
+.env 
+
+/.env
+
+*.env
