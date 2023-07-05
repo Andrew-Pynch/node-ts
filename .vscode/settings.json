@@ -9,7 +9,7 @@
         "editor.defaultFormatter": "rome.rome"
     },
     "[typescript]": {
-        "editor.defaultFormatter": "rome.rome"
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
     },
     "[json]": {
         "editor.defaultFormatter": "rome.rome"
@@ -18,6 +18,6 @@
     // #region Debugger
     "debug.javascript.autoAttachFilter": "onlyWithFlag",
     "debug.internalConsoleOptions": "openOnSessionStart",
-    "workbench.colorTheme": "Default Dark+"
+    "workbench.colorTheme": "Monokai Classic"
     // #endregion
 }

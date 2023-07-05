@@ -1,28 +1,33 @@
 {
-	"name": "node-ts",
-	"version": "0.0.0",
-	"author": "dayblox",
-	"description": "Node.js & TypeScript starter",
-	"engines": {
-		"node": ">=18.11",
-		"pnpm": ">=7.27"
-	},
-	"scripts": {
-		"dev": "pnpm /dev:.*/",
-		"dev:build": "esbuild dev.ts ./src --bundle --outdir=dist --packages=external --platform=node --sourcemap --watch",
-		"dev:run": "node --inspect --no-warnings --loader ./dist/dev.js --watch dist/src",
-		"build": "esbuild index=./src --bundle --minify --outdir=dist --packages=external --platform=node",
-		"start": "node dist"
-	},
-	"dependencies": {
-		"@prisma/client": "^4.16.2",
-		"body-parser": "^1.20.2",
-		"esbuild": "^0.18.11",
-		"express": "^4.18.2",
-		"twilio": "^4.13.0"
-	},
-	"devDependencies": {
-		"@types/node": "^20.3.3",
-		"prisma": "^4.16.2"
-	}
+    "name": "node-ts",
+    "version": "0.0.0",
+    "author": "dayblox",
+    "description": "Node.js & TypeScript starter",
+    "engines": {
+        "node": ">=18.11",
+        "pnpm": ">=7.27"
+    },
+    "scripts": {
+        "dev": "pnpm /dev:.*/",
+        "dev:build": "esbuild dev.ts ./src --bundle --outdir=dist --packages=external --platform=node --sourcemap --watch",
+        "dev:run": "node --inspect --no-warnings --loader ./dist/dev.js --watch dist/src",
+        "build": "esbuild index=./src --bundle --minify --outdir=dist --packages=external --platform=node",
+        "db": "npx prisma generate && npx prisma db push",
+        "start": "nodemon --watch src -e ts --exec \"npx ts-node src/server.ts\""
+    },
+    "dependencies": {
+        "@prisma/client": "^4.16.2",
+        "body-parser": "^1.20.2",
+        "esbuild": "^0.18.11",
+        "express": "^4.18.2",
+        "twilio": "^4.13.0",
+        "zod": "^3.21.4"
+    },
+    "devDependencies": {
+        "@types/node": "^20.3.3",
+        "dotenv": "^16.3.1",
+        "nodemon": "^2.0.22",
+        "prettier": "^3.0.0",
+        "prisma": "^4.16.2"
+    }
 }
