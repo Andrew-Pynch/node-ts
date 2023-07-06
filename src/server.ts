@@ -4,6 +4,7 @@ import express, { Request, Response } from 'express';
 import os from 'os';
 import twilio from 'twilio';
 import {
+    BodyGroup,
     ConversationStep,
     getNextConversationStep,
     prompts,
@@ -23,22 +24,34 @@ app.listen(port, () => {
     //    console.log(`App is running at: https://server-production-5f16.up.railway.app:${port}`);
 });
 
-// Define the type for ConversationStates
 type ConversationStates = {
     [key: string]: ConversationStep;
 };
-
-// Object to hold the current state of each conversation
 let conversationStates: ConversationStates = {};
 
+type UserResponses = {
+    [key: string]: {
+        bodyGroup?: BodyGroup;
+        // ... other fields as needed
+    };
+};
+let userResponses: UserResponses = {};
+
 app.post('/sms', async (req: Request, res: Response) => {
-    // make this function async
+    const twiml = new MessagingResponse();
+
     const fromNumber = req.body.From;
-    const message = req.body.Body;
+    const parsed = req.body.Body;
+    const message: string = parsed ? parsed : '';
+
+    if (message === '' || !message) {
+        twiml.message('Please send a valid message.');
+        res.writeHead(200, { 'Content-Type': 'text/xml' });
+        res.end(twiml.toString());
+        return;
+    }
 
     console.log('Received an SMS from:', fromNumber);
-
-    const twiml = new MessagingResponse();
 
     if (
         message.toLowerCase() === 'cancel' ||
@@ -58,23 +71,27 @@ app.post('/sms', async (req: Request, res: Response) => {
     if (!conversationStates[fromNumber] || message.toLowerCase() === 'no') {
         // If the conversation hasn't started yet or the user wants to start over
         conversationStates[fromNumber] = ConversationStep.GETTING_BODY_GROUP;
+        userResponses[fromNumber] = {}; // Reset the user's responses
     } else if (
-        message.toLowerCase() === 'yes' &&
-        conversationStates[fromNumber] === ConversationStep.CONFIRMATION
+        conversationStates[fromNumber] ===
+            ConversationStep.GETTING_BODY_GROUP &&
+        Object.values(BodyGroup).includes(message as BodyGroup)
     ) {
-        // If the user confirmed the details
-        twiml.message('Thank you! Your workout has been logged.');
-        delete conversationStates[fromNumber];
-    } else {
-        // Otherwise, move to the next step
+        // Store the body group
+        if (!userResponses[fromNumber]) {
+            userResponses[fromNumber] = {};
+        }
+        userResponses[fromNumber].bodyGroup = message as BodyGroup;
         conversationStates[fromNumber] = getNextConversationStep(
             conversationStates[fromNumber]
         );
     }
 
     if (conversationStates[fromNumber]) {
-        // Call your prompts function with await keyword
-        const currentPrompts = await prompts(fromNumber, message); // we need to find a way to pass the correct BodyGroup here
+        const currentPrompts = await prompts(
+            fromNumber,
+            userResponses[fromNumber]?.bodyGroup
+        );
         twiml.message(currentPrompts[conversationStates[fromNumber]]);
     }
 
