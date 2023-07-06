@@ -1,3 +1,14 @@
+import { getAllExercisesByUserIdAndBodyGroup } from './exerciseHelpers';
+
+export const validUserIds = ['clfmq747j0000wk3u87d7wlul'];
+export const validUsersByPhone = {
+    '+15039302186': 'clfmq747j0000wk3u87d7wlul',
+};
+
+const getUserIdFromPhoneNumber = (phoneNumber: string): string => {
+    return validUsersByPhone[phoneNumber];
+};
+
 export enum ConversationStep {
     GETTING_BODY_GROUP = 'GETTING_BODY_GROUP',
     GETTING_EXERCISE = 'GETTING_EXERCISE',
@@ -16,16 +27,63 @@ export enum BodyGroup {
     LEGS = 'Legs',
 }
 
-export const prompts = {
-    [ConversationStep.GETTING_BODY_GROUP]:
-        'What body group would you like to work on today?',
-    [ConversationStep.GETTING_EXERCISE]:
-        'What exercise do you want to perform?',
-    [ConversationStep.GETTING_REPS]: 'How many reps are you planning to do?',
-    [ConversationStep.GETTING_SETS]: 'How many sets are you planning to do?',
-    [ConversationStep.GETTING_WEIGHT]: 'How much weight will you be lifting?',
-    [ConversationStep.CONFIRMATION]:
-        'Got it. Please confirm the details. Reply "yes" to confirm or "no" to start over.',
+const getBodyGroupPrompt = () => {
+    const bodyGroups = Object.values(BodyGroup);
+    const bodyGroupString = bodyGroups.join(', ');
+    return `What body group would you like to work on today? Your options are: ${bodyGroupString}`;
+};
+
+const getExercisePrompt = async (bodyGroup: BodyGroup, userId: string) => {
+    try {
+        // Replace the hardcoded request and response object with actual user id and body group
+        const req = {
+            body: { userId: userId, bodyGroup: bodyGroup },
+        } as unknown as Request;
+        const res = {
+            json: (exercises: any) =>
+                exercises.map((exercise) => exercise.name).join(', '),
+            status: (statusCode: number) => res,
+        } as unknown as Response;
+
+        const exerciseList = await getAllExercisesByUserIdAndBodyGroup(
+            req,
+            res
+        );
+        return `What exercise do you want to perform? Your options are: ${exerciseList}`;
+    } catch (error) {
+        console.error('error', error);
+        return 'An error occurred while retrieving exercises.';
+    }
+};
+
+const getRepsPrompt = () => {
+    return 'How many reps are you planning to do?';
+};
+
+const getSetsPrompt = () => {
+    return 'How many sets are you planning to do?';
+};
+
+const getWeightPrompt = () => {
+    return 'How much weight will you be lifting?';
+};
+
+const getConfirmationPrompt = () => {
+    return 'Got it. Please confirm the details. Reply "yes" to confirm or "no" to start over.';
+};
+
+export const prompts = async (phoneNumber: string, bodyGroup: BodyGroup) => {
+    return {
+        [ConversationStep.GETTING_BODY_GROUP]: getBodyGroupPrompt(),
+        [ConversationStep.GETTING_EXERCISE]: await getExercisePrompt(
+            bodyGroup,
+            getUserIdFromPhoneNumber(phoneNumber)
+        ),
+        [ConversationStep.GETTING_REPS]: getRepsPrompt(),
+        [ConversationStep.GETTING_SETS]: getSetsPrompt(),
+        [ConversationStep.GETTING_WEIGHT]: getWeightPrompt(),
+        [ConversationStep.CONFIRMATION]: getConfirmationPrompt(),
+    };
 };
 
 export const getNextConversationStep = (
