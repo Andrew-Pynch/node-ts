@@ -3,7 +3,11 @@ import bodyParser from 'body-parser';
 import express, { Request, Response } from 'express';
 import os from 'os';
 import twilio from 'twilio';
-import { prisma } from './db';
+import {
+    ConversationStep,
+    getNextConversationStep,
+    prompts,
+} from './conversationHelpers';
 
 const MessagingResponse = twilio.twiml.MessagingResponse;
 
@@ -19,34 +23,49 @@ app.listen(port, () => {
     //    console.log(`App is running at: https://server-production-5f16.up.railway.app:${port}`);
 });
 
-// Object to hold ongoing conversations
-let ongoingConversations: { [key: string]: string[] } = {};
+// Define the type for ConversationStates
+type ConversationStates = {
+    [key: string]: ConversationStep;
+};
+
+// Object to hold the current state of each conversation
+let conversationStates: ConversationStates = {};
 
 app.post('/sms', (req: Request, res: Response) => {
-    console.log('Received an SMS from:', req.body.From); // Log the sender of the SMS
+    const fromNumber = req.body.From;
+    const message = req.body.Body;
 
-    console.log('ENV', process.env.DATABASE_URL);
-
-    prisma.user.findMany().then((users) => {
-        console.log('USER', users[0]);
-    });
+    console.log('Received an SMS from:', fromNumber);
 
     const twiml = new MessagingResponse();
 
-    // // Confirm the message is from the right number
-    // if (req.body.From !== '+15039302186') {
-    //   twiml.message('Unauthorized user.');
-    //   res.writeHead(200, { 'Content-Type': 'text/xml' });
-    //   res.end(twiml.toString());
-    //   return;
-    // }
+    if (fromNumber !== '+15039302186') {
+        twiml.message('Unauthorized user.');
+        res.writeHead(200, { 'Content-Type': 'text/xml' });
+        res.end(twiml.toString());
+        return;
+    }
 
-    // twiml.message('Authorized user.'); // Add a message for the authorized user
-    // console.log('Authorized user recognized.'); // Log that the authorized user was recognized
+    if (!conversationStates[fromNumber] || message.toLowerCase() === 'no') {
+        // If the conversation hasn't started yet or the user wants to start over
+        conversationStates[fromNumber] = ConversationStep.GETTING_BODY_GROUP;
+    } else if (
+        message.toLowerCase() === 'yes' &&
+        conversationStates[fromNumber] === ConversationStep.CONFIRMATION
+    ) {
+        // If the user confirmed the details
+        twiml.message('Thank you! Your workout has been logged.');
+        delete conversationStates[fromNumber];
+    } else {
+        // Otherwise, move to the next step
+        conversationStates[fromNumber] = getNextConversationStep(
+            conversationStates[fromNumber]
+        );
+    }
 
-    // // Implement your conversation logic here
-    // // Push new messages into ongoingConversations[req.body.From]
-    // // and use the length of that array to determine which question to ask next
+    if (conversationStates[fromNumber]) {
+        twiml.message(prompts[conversationStates[fromNumber]]);
+    }
 
     res.writeHead(200, { 'Content-Type': 'text/xml' });
     res.end(twiml.toString());
