@@ -5,7 +5,7 @@ export const validUsersByPhone = {
     '+15039302186': 'clfmq747j0000wk3u87d7wlul',
 };
 
-// probably a better way to do this
+// probably a better way to do this...
 const getUserIdFromPhoneNumber = (phoneNumber: string): string => {
     return validUsersByPhone[phoneNumber];
 };
