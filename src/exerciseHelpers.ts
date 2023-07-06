@@ -1,8 +1,6 @@
-import { PrismaClient } from '@prisma/client';
 import { Request, Response } from 'express';
 import { z } from 'zod';
-
-const prisma = new PrismaClient();
+import { prisma } from './db';
 
 export const getAllExercises = async (req: Request, res: Response) => {
     try {
