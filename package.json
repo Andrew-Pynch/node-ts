@@ -13,7 +13,10 @@
         "dev:run": "node --inspect --no-warnings --loader ./dist/dev.js --watch dist/src",
         "build": "esbuild index=./src --bundle --minify --outdir=dist --packages=external --platform=node",
         "db": "npx prisma generate && npx prisma db push",
-        "start": "nodemon --watch src -e ts --exec \"npx ts-node src/server.ts\""
+        "start": "nodemon --watch src -e ts --exec \"npx ts-node src/server.ts\"",
+        "start:server": "npx ts-node src/server.ts",
+        "postinstall": "pnpm run build && pnpm run db"
+    
     },
     "dependencies": {
         "@prisma/client": "^4.16.2",
