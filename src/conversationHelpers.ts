@@ -47,8 +47,8 @@ const getExercisePrompt = async (bodyGroup: BodyGroup, userId: string) => {
         } as unknown as Response;
 
         const exerciseList = await getAllExercisesByUserIdAndBodyGroup(
-            req,
-            res
+            userId,
+            bodyGroup
         );
         return `What exercise do you want to perform? Your options are: ${exerciseList}`;
     } catch (error) {
