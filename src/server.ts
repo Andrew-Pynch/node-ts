@@ -31,7 +31,8 @@ type ConversationStates = {
 // Object to hold the current state of each conversation
 let conversationStates: ConversationStates = {};
 
-app.post('/sms', (req: Request, res: Response) => {
+app.post('/sms', async (req: Request, res: Response) => {
+    // make this function async
     const fromNumber = req.body.From;
     const message = req.body.Body;
 
@@ -72,7 +73,9 @@ app.post('/sms', (req: Request, res: Response) => {
     }
 
     if (conversationStates[fromNumber]) {
-        twiml.message(prompts[conversationStates[fromNumber]]);
+        // Call your prompts function with await keyword
+        const currentPrompts = await prompts(fromNumber, message); // we need to find a way to pass the correct BodyGroup here
+        twiml.message(currentPrompts[conversationStates[fromNumber]]);
     }
 
     res.writeHead(200, { 'Content-Type': 'text/xml' });
