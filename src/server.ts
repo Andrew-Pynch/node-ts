@@ -6,17 +6,44 @@ import twilio from 'twilio';
 import {
     BodyGroup,
     ConversationStep,
+    ExercisePair,
     getNextConversationStep,
     prompts,
 } from './conversationHelpers';
 
-const MessagingResponse = twilio.twiml.MessagingResponse;
+const __DEV__ = process.env.NODE_ENV === 'development';
 
+type MessagingResponseInstance = InstanceType<
+    typeof twilio.twiml.MessagingResponse
+>;
+class MessageResponseWrapper {
+    private twiml: MessagingResponseInstance;
+    private message: any;
+
+    constructor() {
+        this.twiml = new twilio.twiml.MessagingResponse();
+        this.message = this.twiml.message('');
+    }
+
+    public addMessage(message: string): void {
+        this.message.body(message);
+    }
+
+    public getTwiml(): MessagingResponseInstance {
+        return this.twiml;
+    }
+
+    public send(__DEV__: boolean): void {
+        if (__DEV__) {
+            console.log(this.twiml.toString());
+        } else {
+            // Logic to send the SMS via Twilio
+        }
+    }
+}
 const app = express();
-app.use(bodyParser.urlencoded({ extended: false }));
-
 const port = process.env.PORT || 3000;
-
+app.use(bodyParser.urlencoded({ extended: false }));
 app.listen(port, () => {
     console.log(
         `App is listening on hostname: ${os.hostname()}, port: ${port}`
@@ -24,30 +51,33 @@ app.listen(port, () => {
     //    console.log(`App is running at: https://server-production-5f16.up.railway.app:${port}`);
 });
 
-type ConversationStates = {
+export type ConversationStates = {
     [key: string]: ConversationStep;
 };
 let conversationStates: ConversationStates = {};
-
-type UserResponses = {
-    [key: string]: {
-        bodyGroup?: BodyGroup;
-        // ... other fields as needed
-    };
+export interface UserResponse {
+    bodyGroup?: BodyGroup;
+    exercises?: ExercisePair[];
+    selectedExercise?: string;
+    // Add other fields as necessary
+}
+export type UserResponses = {
+    [key: string]: UserResponse;
 };
 let userResponses: UserResponses = {};
 
 app.post('/sms', async (req: Request, res: Response) => {
-    const twiml = new MessagingResponse();
+    const responseWrapper = new MessageResponseWrapper();
 
     const fromNumber = req.body.From;
     const parsed = req.body.Body;
     const message: string = parsed ? parsed : '';
 
     if (message === '' || !message) {
-        twiml.message('Please send a valid message.');
+        responseWrapper.addMessage('Please send a valid message.');
+        responseWrapper.send(__DEV__);
         res.writeHead(200, { 'Content-Type': 'text/xml' });
-        res.end(twiml.toString());
+        res.end(responseWrapper.getTwiml().toString());
         return;
     }
 
@@ -58,13 +88,14 @@ app.post('/sms', async (req: Request, res: Response) => {
         message.toLowerCase() === 'reset'
     ) {
         conversationStates = {};
-        twiml.message('Your workout has been cancelled.');
+        responseWrapper.addMessage('Your workout has been cancelled.');
     }
 
-    if (fromNumber !== '+15039302186') {
-        twiml.message('Unauthorized user.');
+    if (fromNumber !== '+15039302186' && fromNumber !== '15039302186') {
+        responseWrapper.addMessage('Unauthorized user.');
+        responseWrapper.send(__DEV__);
         res.writeHead(200, { 'Content-Type': 'text/xml' });
-        res.end(twiml.toString());
+        res.end(responseWrapper.getTwiml().toString());
         return;
     }
 
@@ -87,14 +118,44 @@ app.post('/sms', async (req: Request, res: Response) => {
         );
     }
 
+    if (conversationStates[fromNumber] === ConversationStep.GETTING_EXERCISE) {
+        const selectedExerciseNumber = parseInt(message, 10);
+        if (!isNaN(selectedExerciseNumber)) {
+            const selectedExercise =
+                userResponses[fromNumber].exercises[selectedExerciseNumber - 1];
+            if (selectedExercise) {
+                // Store the selected exercise and move to the next step
+                userResponses[fromNumber].selectedExercise =
+                    selectedExercise.exercise;
+                conversationStates[fromNumber] = getNextConversationStep(
+                    conversationStates[fromNumber]
+                );
+            } else {
+                // Invalid exercise number provided
+                responseWrapper.addMessage(
+                    'Invalid exercise number. Please try again.'
+                );
+            }
+        } else {
+            // Non-number input provided
+            responseWrapper.addMessage(
+                'Please provide the number of the exercise.'
+            );
+        }
+    }
+
     if (conversationStates[fromNumber]) {
         const currentPrompts = await prompts(
             fromNumber,
+            userResponses,
             userResponses[fromNumber]?.bodyGroup
         );
-        twiml.message(currentPrompts[conversationStates[fromNumber]]);
+        responseWrapper.addMessage(
+            currentPrompts[conversationStates[fromNumber]]
+        );
     }
 
+    responseWrapper.send(__DEV__);
     res.writeHead(200, { 'Content-Type': 'text/xml' });
-    res.end(twiml.toString());
+    res.end(responseWrapper.getTwiml().toString());
 });

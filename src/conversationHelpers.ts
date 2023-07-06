@@ -1,4 +1,5 @@
-import { getAllExercisesByUserIdAndBodyGroup } from './exerciseHelpers';
+import { getAllNamesByUserIdAndBodyGroup } from './exerciseHelpers';
+import { UserResponses } from './server';
 
 export const validUserIds = ['clfmq747j0000wk3u87d7wlul'];
 export const validUsersByPhone = {
@@ -28,6 +29,17 @@ export enum BodyGroup {
     LEGS = 'Legs',
 }
 
+export type ExercisePair = {
+    id: number;
+    exercise: string;
+};
+
+const generateExercisePairs = (exercises: any[]): ExercisePair[] => {
+    return exercises.map((exercise, index) => {
+        return { id: index + 1, exercise: exercise.exercise };
+    });
+};
+
 const getBodyGroupPrompt = () => {
     const bodyGroups = Object.values(BodyGroup);
     const bodyGroupString = bodyGroups.join(', ');
@@ -36,21 +48,18 @@ const getBodyGroupPrompt = () => {
 
 const getExercisePrompt = async (bodyGroup: BodyGroup, userId: string) => {
     try {
-        // Replace the hardcoded request and response object with actual user id and body group
-        const req = {
-            body: { userId: userId, bodyGroup: bodyGroup },
-        } as unknown as Request;
-        const res = {
-            json: (exercises: any) =>
-                exercises.map((exercise) => exercise.name).join(', '),
-            status: (statusCode: number) => res,
-        } as unknown as Response;
-
-        const exerciseList = await getAllExercisesByUserIdAndBodyGroup(
+        const exerciseList = await getAllNamesByUserIdAndBodyGroup(
             userId,
             bodyGroup
         );
-        return `What exercise do you want to perform? Your options are: ${exerciseList}`;
+
+        const exercisePairs = generateExercisePairs(exerciseList);
+
+        const exerciseString = exercisePairs
+            .map((pair) => `${pair.id}. ${pair.exercise}`)
+            .join('\n');
+
+        return `What exercise do you want to perform? Your options are:\n${exerciseString}`;
     } catch (error) {
         console.error('error', error);
         return 'An error occurred while retrieving exercises.';
@@ -73,13 +82,34 @@ const getConfirmationPrompt = () => {
     return 'Got it. Please confirm the details. Reply "yes" to confirm or "no" to start over.';
 };
 
-export const prompts = async (phoneNumber: string, bodyGroup: BodyGroup) => {
+export const prompts = async (
+    phoneNumber: string,
+    userResponses: UserResponses,
+    bodyGroup: BodyGroup
+) => {
+    const userId = getUserIdFromPhoneNumber(phoneNumber);
+    if (!userResponses[userId]) {
+        userResponses[userId] = {};
+    }
+
+    let exercisePairs = [];
+    if (bodyGroup) {
+        const exerciseList = await getAllNamesByUserIdAndBodyGroup(
+            userId,
+            bodyGroup
+        );
+
+        exercisePairs = generateExercisePairs(exerciseList);
+        userResponses[userId].exercises = exercisePairs;
+    }
+
+    const exerciseString = exercisePairs
+        .map((pair) => `${pair.id}. ${pair.exercise}`)
+        .join('\n');
+
     return {
         [ConversationStep.GETTING_BODY_GROUP]: getBodyGroupPrompt(),
-        [ConversationStep.GETTING_EXERCISE]: await getExercisePrompt(
-            bodyGroup,
-            getUserIdFromPhoneNumber(phoneNumber)
-        ),
+        [ConversationStep.GETTING_EXERCISE]: `What exercise do you want to perform? Your options are:\n${exerciseString}`,
         [ConversationStep.GETTING_REPS]: getRepsPrompt(),
         [ConversationStep.GETTING_SETS]: getSetsPrompt(),
         [ConversationStep.GETTING_WEIGHT]: getWeightPrompt(),
