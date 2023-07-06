@@ -39,6 +39,14 @@ app.post('/sms', (req: Request, res: Response) => {
 
     const twiml = new MessagingResponse();
 
+    if (
+        message.toLowerCase() === 'cancel' ||
+        message.toLowerCase() === 'reset'
+    ) {
+        conversationStates = {};
+        twiml.message('Your workout has been cancelled.');
+    }
+
     if (fromNumber !== '+15039302186') {
         twiml.message('Unauthorized user.');
         res.writeHead(200, { 'Content-Type': 'text/xml' });
