@@ -48,7 +48,7 @@ app.listen(port, () => {
     console.log(
         `App is listening on hostname: ${os.hostname()}, port: ${port}`
     );
-    //    console.log(`App is running at: https://server-production-5f16.up.railway.app:${port}`);
+    
 });
 
 export type ConversationStates = {
